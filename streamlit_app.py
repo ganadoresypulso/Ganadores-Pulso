@@ -1,58 +1,17 @@
-import os
-import openpyxl
-import pandas as pd
-import streamlit as st
+=LET(
+  FechaHoy; HOY();
+  Caballos; 'FORMATO DE REGISTRO.xlsx'!Tabla1[EJEMPLAR];
+  Fechas; 'FORMATO DE REGISTRO.xlsx'!Tabla1[FECHA CARRERA];
+  Pesos; 'FORMATO DE REGISTRO.xlsx'!Tabla1[PESO FISICO];
+  CantLlegadas; CONTAR.SI.CONJUNTO(Caballos; C12; Fechas; "<"&FechaHoy; Pesos; ">0");
 
-# Configuración de la página
-st.set_page_config(
-    page_title="Ganadores & Pulso - Campeonato de Marcas", layout="wide"
-)
+  SI(CantLlegadas=0; EXPANDIR(""; 5; 4; "");
+    LET(
+      mLlegadas; FILTRAR(ELEGIRCOLS('FORMATO DE REGISTRO.xlsx'!Tabla1[#Datos]; 58; 60; 61; 84); (Fechas<FechaHoy) * (Caballos=C12) * (ESNUMERO(Pesos)));
+      mFormat; SI(CantLlegadas=1; INDICE(mLlegadas; 1; 0); mLlegadas);
+      mCorte; SI(CantLlegadas>5; TOMAR(mFormat; -5); mFormat);
+      FilasFaltantes; 5 - MIN(5; CantLlegadas);
 
-# Título y encabezado principal
-st.title("Ganadores & Pulso - Campeonato de Marcas")
-st.subheader("Director: Nelson Osorio")
-
-# Archivo de control de Excel
-archivo_excel = "CONTROL CAMPEONATO DE MARCAS.xlsx"
-
-# Verificar si el archivo existe
-if os.path.exists(archivo_excel):
-  try:
-    wb = openpyxl.load_workbook(archivo_excel)
-
-    st.sidebar.header("Menú de Navegación")
-    opcion = st.sidebar.selectbox(
-        "Seleccione una opción:", ["Registro de Marcas", "Ver Mis Marcas"]
+      SI(FilasFaltantes=0; mCorte; APILARV(EXPANDIR(""; FilasFaltantes; 4; ""); mCorte))
     )
-
-    if opcion == "Registro de Marcas":
-      st.markdown("### Listado Oficial de Participantes y Carga de Marcas")
-
-      # Formulario de registro de marcas para el público
-      with st.form("form_marcas"):
-        participante = st.text_input("Nombre del Participante / Marca:")
-        clave = st.text_input("Clave de seguridad:", type="password")
-        ejemplar = st.text_input("Ejemplar o Marca a Registrar:")
-
-        submitted = st.form_submit_button("Enviar Marca")
-
-        if submitted:
-          if clave:
-            sheet = wb.active
-            sheet.append([participante, ejemplar])
-            wb.save(archivo_excel)
-            st.success(
-                f"¡Marca de **{participante}** guardada con éxito en el sistema!"
-            )
-          else:
-            st.warning("⚠️ Por favor ingresa tu clave de seguridad.")
-
-    elif opcion == "Ver Mis Marcas":
-      st.markdown("### Resumen de Marcas Registradas")
-      df = pd.read_excel(archivo_excel)
-      st.dataframe(df)
-
-  except Exception as mi:
-    st.error(f"Error al procesar el archivo: {mi}")
-else:
-  st.error("No se encuentra el archivo de Excel en la carpeta.")
+  )
