@@ -43,7 +43,7 @@ if os.path.exists(archivo_excel):
           )
 
         st.markdown("---")
-        st.markdown("#### Seleción de Marcas por Carrera")
+        st.markdown("#### Selección de Marcas por Carrera (3 por carrera)")
 
         # Selector de cantidad de carreras del meeting
         num_carreras = st.selectbox(
@@ -55,21 +55,28 @@ if os.path.exists(archivo_excel):
         # Diccionario para almacenar las marcas ingresadas por carrera
         marcas_carreras = {}
 
-        # Generar dinámicamente las cajitas para cada carrera
+        # Generar dinámicamente las cajitas para cada carrera (3 marcas + indicador de fija/superfija)
         for i in range(1, num_carreras + 1):
           st.markdown(f"**Carrera #{i}**")
-          c1, c2 = st.columns([1, 2])
+          c1, c2, c3, c4 = st.columns([2, 2, 2, 2])
           with c1:
-            ejemplar = st.text_input(
-                f"Ejemplar (C-{i})", key=f"ejemplar_{i}"
-            )
+            marca_1 = st.text_input(f"1era Marca (C-{i})", key=f"m1_{i}")
           with c2:
-            comentario = st.text_input(
-                f"Nota / Marca adicional (C-{i})", key=f"comentario_{i}"
+            marca_2 = st.text_input(f"2da Marca (C-{i})", key=f"m2_{i}")
+          with c3:
+            marca_3 = st.text_input(f"3era Marca (C-{i})", key=f"m3_{i}")
+          with c4:
+            tipo_fija = st.selectbox(
+                f"Selección (C-{i})",
+                ["Normal", "Fija", "Superfija"],
+                key=f"fija_{i}",
             )
+
           marcas_carreras[f"Carrera_{i}"] = {
-              "ejemplar": ejemplar,
-              "comentario": comentario,
+              "m1": marca_1,
+              "m2": marca_2,
+              "m3": marca_3,
+              "tipo": tipo_fija,
           }
 
         st.markdown("---")
@@ -79,17 +86,20 @@ if os.path.exists(archivo_excel):
 
         if submitted:
           if participante and clave_participante:
-            # Aquí procesamos y guardamos de forma segura en el Excel interno
             sheet = wb.active
-            # Guardamos una fila por cada carrera registrada
+            # Guardamos la información detallada por cada carrera registrada
             for carrera, datos in marcas_carreras.items():
-              if datos["ejemplar"]:  # Si colocó un ejemplar
+              if (
+                  datos["m1"] or datos["m2"] or datos["m3"]
+              ):  # Si al menos cargó una marca
                 sheet.append(
                     [
                         participante,
                         carrera,
-                        datos["ejemplar"],
-                        datos["comentario"],
+                        datos["m1"],
+                        datos["m2"],
+                        datos["m3"],
+                        datos["tipo"],
                     ]
                 )
             wb.save(archivo_excel)
