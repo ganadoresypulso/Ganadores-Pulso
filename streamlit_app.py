@@ -15,3 +15,4 @@
       SI(FilasFaltantes=0; mCorte; APILARV(EXPANDIR(""; FilasFaltantes; 4; ""); mCorte))
     )
   )
+)
