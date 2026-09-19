@@ -199,4 +199,4 @@ if os.path.exists(excel_file):
     except Exception as e:
         st.error(f"Error al procesar el archivo de Excel: {e}")
 else:
-    st.error("No se encuentra el archivo de Excel en la carpeta.")
+    st.error("No se encuentra el archivo de Excel en la carpeta.")Busca la parte final del código (o donde prefieras que se vea) y añade estas pocas líneas:
