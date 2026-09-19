@@ -1,202 +1,83 @@
-import streamlit as st
-import pandas as pd
-import openpyxl
 import os
-from datetime import datetime
+import openpyxl
+import pandas as pd
+import streamlit as st
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Campeonato de Marcas | Ganadores & Pulso",
-    page_icon="🏇",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="Ganadores & Pulso - Campeonato de Marcas", layout="wide"
 )
 
-# Banner principal de la marca en la parte superior
-banner_path = "Logo Ganadores y pulso 5.jpg"
-if os.path.exists(banner_path):
-    st.image(banner_path, use_container_width=True)
-else:
-    st.title("🏇 GANADORES & PULSO")
-    st.markdown("### Portal Oficial del Campeonato de Marcas | Director: Nelson Osorio")
+# Título y encabezado principal
+st.title("Ganadores & Pulso - Campeonato de Marcas")
+st.subheader("Director: Nelson Osorio")
 
+# Archivo de control de Excel
+archivo_excel = "CONTROL CAMPEONATO DE MARCAS.xlsx"
+
+# Verificar si el archivo existe
+if os.path.exists(archivo_excel):
+  try:
+    # Cargar el libro de Excel para trabajar con él
+    wb = openpyxl.load_workbook(archivo_excel)
+    hojas = wb.sheetnames
+
+    st.sidebar.header("Menú de Navegación")
+    opcion = st.sidebar.selectbox(
+        "Seleccione una opción:", ["Registro de Marcas", "Ver Mis Marcas"]
+    )
+
+    if opcion == "Registro de Marcas":
+      st.markdown("### Listado Oficial de Participantes y Carga de Marcas")
+
+      # Formulario de registro de marcas
+      with st.form("form_marcas"):
+        participante = st.text_input("Nombre del Participante / Marca:")
+        clave = st.text_input("Clave de seguridad:", type="password")
+
+        # Supongamos que pedimos una selección de ejemplares o carreras
+        ejemplar = st.text_input("Ejemplar o Marca a Registrar:")
+
+        submitted = st.form_submit_button("Enviar Marca")
+
+        if submitted:
+          if clave:  # Aquí puedes validar tu clave si lo deseas
+            # Lógica para guardar en el Excel
+            sheet = wb.active
+            sheet.append([participante, ejemplar])
+            wb.save(archivo_excel)
+            st.success(
+                f"¡Marca de **{participante}** guardada con éxito en el sistema!"
+            )
+          else:
+            st.warning("⚠️ Por favor ingresa tu clave de seguridad.")
+
+    elif opcion == "Ver Mis Marcas":
+      st.markdown("### Resumen de Marcas Registradas")
+      df = pd.read_excel(archivo_excel)
+      st.dataframe(df)
+
+  except Exception as mi:
+    st.error(f"Error al procesar el archivo de Excel: {mi}")
+else:
+  st.error("No se encuentra el archivo de Excel en la carpeta.")
+
+# ---------------------------------------------------------
+# BOTÓN DE DESCARGA DIRECTA DEL EXCEL ACTUALIZADO
+# ---------------------------------------------------------
 st.markdown("---")
+st.markdown("### 📥 Panel de Control - Descarga de Datos")
 
-excel_file = "CONTROL CAMPEONATO DE MARCAS.xlsx"
-
-if os.path.exists(excel_file):
-    try:
-        # Cargamos el libro con openpyxl para leer coordenadas exactas
-        wb_lee = openpyxl.load_workbook(excel_file, data_only=True)
-        if "CONTROL" not in wb_lee.sheetnames:
-            st.error("⚠️ No se encontró la hoja 'CONTROL' en el archivo de Excel.")
-            st.stop()
-            
-        ws_lee = wb_lee["CONTROL"]
-        
-        # Leemos los encabezados estrictamente hasta la columna R (Columna 18)
-        max_col_permitida = 18 # Columna R
-        headers = [ws_lee.cell(row=3, column=col).value for col in range(1, max_col_permitida + 1)]
-        headers_limpios = [str(h).strip() if h is not None else f"Col_{i+1}" for i, h in enumerate(headers)]
-        
-        # Leemos los datos desde la Fila 4 hasta la Fila 53
-        max_fila_permitida = min(53, ws_lee.max_row)
-        datos_filas = []
-        participantes = []
-        
-        for r in range(4, max_fila_permitida + 1):
-            val_item = ws_lee.cell(row=r, column=1).value   # Columna A (ITEM)
-            val_codigo = ws_lee.cell(row=r, column=2).value # Columna B (Código)
-            val_nombre = ws_lee.cell(row=r, column=3).value # Columna C (Nombre)
-            
-            if val_codigo is None or str(val_codigo).strip() == "" or str(val_codigo).lower() in ['none', 'nan']:
-                continue
-            if val_nombre is None or str(val_nombre).strip() == "" or str(val_nombre).lower() in ['none', 'nan']:
-                continue
-                
-            fila_valores = [ws_lee.cell(row=r, column=c).value for c in range(1, max_col_permitida + 1)]
-            fila_valores_limpios = ["" if v is None else v for v in fila_valores]
-            datos_filas.append(fila_valores_limpios)
-            
-            item_str = str(val_item).strip() if val_item is not None else "S/I"
-            codigo_str = str(val_codigo).strip()
-            nombre_str = str(val_nombre).strip()
-            participantes.append(f"{item_str} - {codigo_str} - {nombre_str}")
-            
-        df_final = pd.DataFrame(datos_filas, columns=headers_limpios)
-
-        # Menú Lateral
-        st.sidebar.markdown("### 📌 Menú Principal")
-        st.sidebar.markdown("---")
-        modo = st.sidebar.radio("Seleccione una opción:", ["📋 Ver Tabla General", "✍️ Cargar Mis Marcas"])
-        
-        st.sidebar.markdown("---")
-        st.sidebar.info("💡 **Norma:** Recuerde enviar sus marcas antes de las 10:30 p.m.")
-        
-        if modo == "📋 Ver Tabla General":
-            st.markdown("### 📋 Listado Oficial de Participantes")
-            st.markdown("Consulte aquí los participantes inscritos y el acumulado de sus semanas.")
-            st.dataframe(df_final, use_container_width=True, hide_index=True)
-            
-        elif modo == "✍️ Cargar Mis Marcas":
-            st.markdown("### ✍️ Módulo de Ingreso de Marcas por Participante")
-            st.markdown("Seleccione sus marcas por carrera y asegúrese de validar su clave de seguridad.")
-            
-            if participantes:
-                participante_seleccionado = st.selectbox("🎯 Seleccione su Participante (Item - Código - Nombre):", participantes)
-                partes = participante_seleccionado.split(" - ")
-                nombre_limpio = partes[-1] if len(partes) >= 3 else participante_seleccionado
-                
-                st.markdown("---")
-                st.markdown("#### ⚙️ Configuración de la Jornada")
-                col_f1, col_f2 = st.columns(2)
-                with col_f1:
-                    fecha_reunion = st.date_input("📅 Fecha de la Reunión (Domingo):", value=datetime.today())
-                with col_f2:
-                    num_carreras = st.slider("🏁 Cantidad de carreras programadas:", min_value=6, max_value=16, value=14)
-                
-                fecha_str = fecha_reunion.strftime("%d-%m-%Y")
-                st.success(f"Participante activo: **{participante_seleccionado}** | Reunión: **{fecha_str}** | Carreras: **{num_carreras}**")
-                
-                with st.expander("📖 Ver Reglamento Rápido de Marcas"):
-                    st.markdown("""
-                    - **Carreras normales:** Indique 3 marcas (1ra, 2da y 3ra).
-                    - **Súper Fijo (SF):** Marque **solo 1 ejemplar** en la carrera seleccionada (deje 2da y 3ra vacías).
-                    - **Fijas (F):** Una en las carreras no válidas y otra en las válidas del 5y6.
-                    """)
-                
-                with st.form("form_marcas"):
-                    marcas_por_carrera = {}
-                    
-                    for i in range(1, num_carreras + 1):
-                        st.markdown(f"**Carrera {i}**")
-                        col_m1, col_m2, col_m3, col_m4 = st.columns([2, 2, 2, 2])
-                        
-                        with col_m1:
-                            m1 = st.text_input(f"1ra C-{i}", key=f"c{i}_m1")
-                        with col_m2:
-                            m2 = st.text_input(f"2da C-{i}", key=f"c{i}_m2")
-                        with col_m3:
-                            m3 = st.text_input(f"3ra C-{i}", key=f"c{i}_m3")
-                        with col_m4:
-                            tipo_jugada = st.selectbox(f"Tipo C-{i}", ["Normal", "Fijo (F)", "Súper Fijo (SF)"], key=f"c{i}_tipo")
-                        
-                        marcas_por_carrera[i] = {
-                            "m1": m1, "m2": m2, "m3": m3, "tipo": tipo_jugada
-                        }
-                        st.markdown("---")
-                    
-                    col_key1, col_key2 = st.columns([2, 1])
-                    with col_key1:
-                        clave_seguridad = st.text_input("🔑 Ingrese su Clave de Seguridad:", type="password")
-                    with col_key2:
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        boton_guardar = st.form_submit_button("💾 Guardar y Enviar Marcas")
-                    
-                    if boton_guardar:
-                        if clave_seguridad:
-                            sf_count = sum(1 for c in marcas_por_carrera.values() if c["tipo"] == "Súper Fijo (SF)")
-                            
-                            if sf_count > 1:
-                                st.error("⚠️ Solo puedes seleccionar un (1) Súper Fijo (SF) por reunión.")
-                            else:
-                                error_sf = False
-                                for num, datos in marcas_por_carrera.items():
-                                    if datos["tipo"] == "Súper Fijo (SF)" and (datos["m2"].strip() != "" or datos["m3"].strip() != ""):
-                                        st.error(f"⚠️ En la Carrera {num} seleccionaste Súper Fijo (SF), la 2da y 3ra marca deben estar vacías.")
-                                        error_sf = True
-                                        break
-                                        
-                                if not error_sf:
-                                    try:
-                                        wb = openpyxl.load_workbook(excel_file)
-                                        
-                                        if fecha_str in wb.sheetnames:
-                                            ws = wb[fecha_str]
-                                        else:
-                                            ws = wb.create_sheet(title=fecha_str)
-                                            cabecera = ["NOMBRE PARTICIPANTE"]
-                                            for c in range(1, 17):
-                                                cabecera.extend([f"C{c}_1ra", f"C{c}_2da", f"C{c}_3ra", f"C{c}_Tipo"])
-                                            ws.append(cabecera)
-                                        
-                                        fila_encontrada = None
-                                        for row_idx in range(4, ws.max_row + 1):
-                                            val_celda = ws.cell(row=row_idx, column=3).value
-                                            if val_celda and str(val_celda).strip().upper() == nombre_limpio.strip().upper():
-                                                fila_encontrada = row_idx
-                                                break
-                                        
-                                        datos_fila = [nombre_limpio]
-                                        for c in range(1, 17):
-                                            if c <= num_carreras:
-                                                m_data = marcas_por_carrera[c]
-                                                tipo_corto = "N"
-                                                if m_data["tipo"] == "Fijo (F)":
-                                                    tipo_corto = "F"
-                                                elif m_data["tipo"] == "Súper Fijo (SF)":
-                                                    tipo_corto = "SF"
-                                                    
-                                                datos_fila.extend([m_data["m1"], m_data["m2"], m_data["m3"], tipo_corto])
-                                            else:
-                                                datos_fila.extend(["", "", "", ""])
-                                        
-                                        if fila_encontrada:
-                                            for col_idx, val in enumerate(datos_fila, start=1):
-                                                ws.cell(row=fila_encontrada, column=col_idx, value=val)
-                                        else:
-                                            ws.append(datos_fila)
-                                        
-                                        wb.save(excel_file)
-                                        st.success(f"🎉 ¡Marcas de **{nombre_limpio}** guardadas con éxito en la hoja '{fecha_str}'!")
-                                    except Exception as err:
-                                        st.error(f"❌ Error al escribir en el Excel (verifique que no lo tenga abierto): {err}")
-                        else:
-                            st.error("⚠️ Por favor ingrese su clave de seguridad.")
-            else:
-                st.warning("No se encontraron participantes válidos.")
-        
-    except Exception as e:
-        st.error(f"Error al procesar el archivo de Excel: {e}")
+if os.path.exists(archivo_excel):
+  with open(archivo_excel, "rb") as f:
+    st.download_button(
+        label="📥 Descargar Excel con las Marcas Actualizadas",
+        data=f,
+        file_name="CONTROL_CAMPEONATO_ACTUALIZADO.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 else:
-    st.error("No se encuentra el archivo de Excel en la carpeta.")Busca la parte final del código (o donde prefieras que se vea) y añade estas pocas líneas:
+  st.warning(
+      "El archivo de Excel aún no está disponible para descarga en este"
+      " momento."
+  )
