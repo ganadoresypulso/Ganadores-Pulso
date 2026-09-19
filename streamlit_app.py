@@ -1,18 +1,117 @@
-=LET(
-  FechaHoy; HOY();
-  Caballos; 'FORMATO DE REGISTRO.xlsx'!Tabla1[EJEMPLAR];
-  Fechas; 'FORMATO DE REGISTRO.xlsx'!Tabla1[FECHA CARRERA];
-  Pesos; 'FORMATO DE REGISTRO.xlsx'!Tabla1[PESO FISICO];
-  CantLlegadas; CONTAR.SI.CONJUNTO(Caballos; C12; Fechas; "<"&FechaHoy; Pesos; ">0");
+import os
+import openpyxl
+import pandas as pd
+import streamlit as st
 
-  SI(CantLlegadas=0; EXPANDIR(""; 5; 4; "");
-    LET(
-      mLlegadas; FILTRAR(ELEGIRCOLS('FORMATO DE REGISTRO.xlsx'!Tabla1[#Datos]; 58; 60; 61; 84); (Fechas<FechaHoy) * (Caballos=C12) * (ESNUMERO(Pesos)));
-      mFormat; SI(CantLlegadas=1; INDICE(mLlegadas; 1; 0); mLlegadas);
-      mCorte; SI(CantLlegadas>5; TOMAR(mFormat; -5); mFormat);
-      FilasFaltantes; 5 - MIN(5; CantLlegadas);
-
-      SI(FilasFaltantes=0; mCorte; APILARV(EXPANDIR(""; FilasFaltantes; 4; ""); mCorte))
-    )
-  )
+# Configuración de la página
+st.set_page_config(
+    page_title="Ganadores & Pulso - Campeonato de Marcas", layout="wide"
 )
+
+# Título y encabezado principal
+st.title("Ganadores & Pulso - Campeonato de Marcas")
+st.subheader("Director: Nelson Osorio")
+
+# Archivo de control de Excel
+archivo_excel = "CONTROL CAMPEONATO DE MARCAS.xlsx"
+
+# Verificar si el archivo existe en el repositorio
+if os.path.exists(archivo_excel):
+  try:
+    wb = openpyxl.load_workbook(archivo_excel)
+
+    st.sidebar.header("Menú de Navegación")
+    opcion = st.sidebar.selectbox(
+        "Seleccione una opción:",
+        ["Registro de Marcas del Día", "Ver Resumen de Marcas"],
+    )
+
+    if opcion == "Registro de Marcas del Día":
+      st.markdown(
+          "### 🏇 Registro Oficial de Marcas - Hipódromo La Rinconada"
+      )
+
+      with st.form("form_campeonato"):
+        # Datos generales del participante
+        st.markdown("#### Datos del Participante")
+        col1, col2 = st.columns(2)
+        with col1:
+          participante = st.text_input("Nombre del Participante / Marca:")
+        with col2:
+          clave_participante = st.text_input(
+              "Clave de seguridad personal:", type="password"
+          )
+
+        st.markdown("---")
+        st.markdown("#### Seleción de Marcas por Carrera")
+
+        # Selector de cantidad de carreras del meeting
+        num_carreras = st.selectbox(
+            "Seleccione la cantidad de carreras de la reunión:",
+            options=list(range(1, 11)),
+            index=5,
+        )  # Por defecto 6 carreras
+
+        # Diccionario para almacenar las marcas ingresadas por carrera
+        marcas_carreras = {}
+
+        # Generar dinámicamente las cajitas para cada carrera
+        for i in range(1, num_carreras + 1):
+          st.markdown(f"**Carrera #{i}**")
+          c1, c2 = st.columns([1, 2])
+          with c1:
+            ejemplar = st.text_input(
+                f"Ejemplar (C-{i})", key=f"ejemplar_{i}"
+            )
+          with c2:
+            comentario = st.text_input(
+                f"Nota / Marca adicional (C-{i})", key=f"comentario_{i}"
+            )
+          marcas_carreras[f"Carrera_{i}"] = {
+              "ejemplar": ejemplar,
+              "comentario": comentario,
+          }
+
+        st.markdown("---")
+        submitted = st.form_submit_button(
+            "🚀 Enviar Todas las Marcas al Sistema"
+        )
+
+        if submitted:
+          if participante and clave_participante:
+            # Aquí procesamos y guardamos de forma segura en el Excel interno
+            sheet = wb.active
+            # Guardamos una fila por cada carrera registrada
+            for carrera, datos in marcas_carreras.items():
+              if datos["ejemplar"]:  # Si colocó un ejemplar
+                sheet.append(
+                    [
+                        participante,
+                        carrera,
+                        datos["ejemplar"],
+                        datos["comentario"],
+                    ]
+                )
+            wb.save(archivo_excel)
+            st.success(
+                f"¡Excelente, {participante}! Tus marcas han sido registradas"
+                " con éxito en el sistema."
+            )
+          else:
+            st.warning(
+                "⚠️ Por favor ingresa tu nombre y tu clave de seguridad antes"
+                " de enviar."
+            )
+
+    elif opcion == "Ver Resumen de Marcas":
+      st.markdown("### 📊 Resumen de Marcas Registradas")
+      df = pd.read_excel(archivo_excel)
+      st.dataframe(df, use_container_width=True)
+
+  except Exception as mi:
+    st.error(f"Error al procesar el archivo del sistema: {mi}")
+else:
+  st.error(
+      "No se encuentra el archivo de control de Excel en la carpeta del"
+      " sistema."
+  )
