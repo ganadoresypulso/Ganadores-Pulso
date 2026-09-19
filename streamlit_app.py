@@ -115,7 +115,8 @@ if os.path.exists(archivo_excel):
 
     elif opcion == "Listado de Participantes":
       st.markdown("### 📋 Listado de Participantes")
-      df = pd.read_excel(archivo_excel)
+      # Usamos header=1 para que tome la fila correcta de los títulos del Excel y evite columnas "None"
+      df = pd.read_excel(archivo_excel, header=1)
       st.dataframe(df, use_container_width=True)
 
   except Exception as mi:
