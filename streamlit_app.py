@@ -81,3 +81,26 @@ else:
       "El archivo de Excel aún no está disponible para descarga en este"
       " momento."
   )
+# ---------------------------------------------------------
+# PANEL DE CONTROL SEGURO (SOLO PARA EL DIRECTOR)
+# ---------------------------------------------------------
+st.markdown("---")
+with st.expander("🔒 Acceso Administrativo (Solo Director)"):
+  admin_key = st.text_input(
+      "Ingrese clave de administrador:", type="password"
+  )
+  # Cambia 'tu_clave_secreta' por la contraseña que tú quieras usar
+  if admin_key == "tu_clave_secreta":
+    st.success("¡Acceso concedido!")
+    if os.path.exists(archivo_excel):
+      with open(archivo_excel, "rb") as f:
+        st.download_button(
+            label="📥 Descargar Excel con las Marcas Actualizadas",
+            data=f,
+            file_name="CONTROL_CAMPEONATO_ACTUALIZADO.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    else:
+      st.warning("El archivo de Excel aún no está disponible.")
+  elif admin_key:
+    st.error("Clave incorrecta.")
