@@ -23,7 +23,7 @@ if os.path.exists(archivo_excel):
     st.sidebar.header("Menú de Navegación")
     opcion = st.sidebar.selectbox(
         "Seleccione una opción:",
-        ["Registro de Marcas del Día", "Ver Resumen de Marcas"],
+        ["Registro de Marcas del Día", "Listado de Participantes"],
     )
 
     if opcion == "Registro de Marcas del Día":
@@ -113,8 +113,8 @@ if os.path.exists(archivo_excel):
                 " de enviar."
             )
 
-    elif opcion == "Ver Resumen de Marcas":
-      st.markdown("### 📊 Resumen de Marcas Registradas")
+    elif opcion == "Listado de Participantes":
+      st.markdown("### 📋 Listado de Participantes")
       df = pd.read_excel(archivo_excel)
       st.dataframe(df, use_container_width=True)
 
