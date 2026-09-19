@@ -115,8 +115,9 @@ if os.path.exists(archivo_excel):
 
     elif opcion == "Listado de Participantes":
       st.markdown("### 📋 Listado de Participantes")
-      # Usamos header=1 para que tome la fila correcta de los títulos del Excel y evite columnas "None"
+      # Leemos el Excel tomando la fila 1 como encabezado y limitando estrictamente a las primeras 18 columnas
       df = pd.read_excel(archivo_excel, header=1)
+      df = df.iloc[:, :18]  # Selecciona exactamente las primeras 18 columnas
       st.dataframe(df, use_container_width=True)
 
   except Exception as mi:
