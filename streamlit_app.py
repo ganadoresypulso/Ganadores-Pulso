@@ -113,10 +113,31 @@ if os.path.exists(excel_file):
           )
 
         if filas_ranking:
-          # Usar la primera fila extraída como cabecera o asignar nombres limpios de columnas (B a Q)
-          headers_rank = filas_ranking[0]
+          # Asignar nombres limpios y únicos a las columnas para evitar errores de duplicados
+          num_columnas = len(filas_ranking[0])
+          nombres_cols = [
+              f"Col_{i+1}" for i in range(num_columnas)
+          ]  # Por defecto genéricas y limpias
+
+          # Si la primera fila parece una cabecera con nombres descriptivos, la usamos con sufijos únicos
+          raw_headers = [
+              str(h).strip() if h is not None and str(h).strip() != "" else f"Col_{i+1}"
+              for i, h in enumerate(filas_ranking[0])
+          ]
+
+          # Asegurar que no haya nombres duplicados en las cabeceras
+          seen = {}
+          unique_headers = []
+          for h in raw_headers:
+            if h in seen:
+              seen[h] += 1
+              unique_headers.append(f"{h}_{seen[h]}")
+            else:
+              seen[h] = 0
+              unique_headers.append(h)
+
           datos_rank = filas_ranking[1:]
-          df_rank = pd.DataFrame(datos_rank, columns=headers_rank)
+          df_rank = pd.DataFrame(datos_rank, columns=unique_headers)
           st.dataframe(df_rank, use_container_width=True, hide_index=True)
         else:
           st.warning(
