@@ -9,9 +9,17 @@ st.set_page_config(
 )
 
 st.title("🏇 Campeonato de Marcas - Ganadores & Pulso")
-st.markdown("### Portal de Participantes y Carga de Marcas")
+st.markdown("### Portal Oficial de Participantes")
 
 excel_file = "CONTROL CAMPEONATO DE MARCAS.xlsx"
+
+# Inicializar variables globales de configuración en la sesión si no existen
+if "semana_activa" not in st.session_state:
+  st.session_state["semana_activa"] = "SEM 1"
+if "carreras_activas" not in st.session_state:
+  st.session_state["carreras_activas"] = 14
+if "participante_logueado" not in st.session_state:
+  st.session_state["participante_logueado"] = None
 
 if os.path.exists(excel_file):
   try:
@@ -23,8 +31,8 @@ if os.path.exists(excel_file):
 
     ws_lee = wb_lee["CONTROL"]
 
-    # Leemos los encabezados de la Fila 3, pero limitamos estrictamente hasta la columna R (Columna 18)
-    max_col_permitida = 18  # Columna R
+    # Leemos los encabezados de la Fila 3, limitados hasta la columna R (18)
+    max_col_permitida = 18
     headers = [
         ws_lee.cell(row=3, column=col).value
         for col in range(1, max_col_permitida + 1)
@@ -34,17 +42,18 @@ if os.path.exists(excel_file):
         for i, h in enumerate(headers)
     ]
 
-    # Leemos los datos desde la Fila 4 hasta la Fila 53 (o el máximo real si fuera menor)
+    # Leemos los datos desde la Fila 4 hasta la Fila 53
     max_fila_permitida = min(53, ws_lee.max_row)
     datos_filas = []
-    participantes = []
+    lista_participantes_validos = (
+        {}
+    )  # Diccionario para validar {nombre: codigo}
 
     for r in range(4, max_fila_permitida + 1):
       val_item = ws_lee.cell(row=r, column=1).value  # Columna A (ITEM)
       val_codigo = ws_lee.cell(row=r, column=2).value  # Columna B (Código)
       val_nombre = ws_lee.cell(row=r, column=3).value  # Columna C (Nombre)
 
-      # Si el código o el nombre están vacíos, saltamos la fila para evitar filas en blanco
       if (
           val_codigo is None
           or str(val_codigo).strip() == ""
@@ -58,70 +67,83 @@ if os.path.exists(excel_file):
       ):
         continue
 
-      # Construimos la fila acotada exactamente hasta la columna R (18)
+      codigo_str = str(val_codigo).strip()
+      nombre_str = str(val_nombre).strip()
+
+      # Guardamos en el diccionario para autenticación
+      lista_participantes_validos[nombre_str] = codigo_str
+
       fila_valores = [
           ws_lee.cell(row=r, column=c).value
           for c in range(1, max_col_permitida + 1)
       ]
-
-      # Limpiamos valores None para que se vean ordenados en la tabla
       fila_valores_limpios = ["" if v is None else v for v in fila_valores]
       datos_filas.append(fila_valores_limpios)
 
-      # Preparamos el selector para el menú
-      item_str = str(val_item).strip() if val_item is not None else "S/I"
-      codigo_str = str(val_codigo).strip()
-      nombre_str = str(val_nombre).strip()
-      participantes.append(f"{item_str} - {codigo_str} - {nombre_str}")
-
-    # Creamos el DataFrame final limpio hasta la columna R y fila 53
     df_final = pd.DataFrame(datos_filas, columns=headers_limpios)
 
+    # Menú Lateral
     st.sidebar.header("🔐 Menú de Navegación")
     modo = st.sidebar.radio(
         "Seleccione una opción:",
-        ["Ver Tabla General", "Cargar Mis Marcas", "Panel de Director"],
+        [
+            "Acceso de Participantes",
+            "Ver Tabla General",
+            "Panel de Director",
+        ],
     )
 
     if modo == "Ver Tabla General":
       st.subheader("📋 Listado Oficial de Participantes")
       st.dataframe(df_final, use_container_width=True, hide_index=True)
 
-    elif modo == "Cargar Mis Marcas":
-      st.subheader("✍️ Módulo de Ingreso de Marcas por Participante")
+    elif modo == "Acceso de Participantes":
+      st.subheader("✍️ Módulo de Ingreso de Marcas")
 
-      if participantes:
-        participante_seleccionado = st.selectbox(
-            "Seleccione su Participante:", participantes
-        )
-        # Extraemos el nombre limpio para buscarlo en las hojas de jornadas
-        partes = participante_seleccionado.split(" - ")
-        nombre_limpio = (
-            partes[-1] if len(partes) >= 3 else participante_seleccionado
+      # Si no ha iniciado sesión, mostrar pantalla de login
+      if not st.session_state["participante_logueado"]:
+        st.markdown(
+            "Por favor ingrese su **Nombre** y su **Clave de Acceso** (su"
+            " código asignado, ej: `COD 02`)."
         )
 
-        st.markdown("---")
-        st.markdown("#### ⚙️ Configuración de la Jornada")
-
-        col_f1, col_f2 = st.columns(2)
-        with col_f1:
-          # Selector del número de semana (SEM 1, SEM 2, etc.)
-          semana_seleccionada = st.selectbox(
-              "Seleccione la Semana:",
-              ["SEM 1", "SEM 2", "SEM 3", "SEM 4", "SEM 5", "SEM 6"],
+        with st.form("form_login"):
+          nombre_ingresado = st.selectbox(
+              "Seleccione su Nombre:", options=list(lista_participantes_validos.keys())
           )
-        with col_f2:
-          num_carreras = st.slider(
-              "Cantidad de carreras programadas:",
-              min_value=6,
-              max_value=16,
-              value=14,
+          clave_ingresada = st.text_input(
+              "Clave de Seguridad (Código):", type="password"
           )
+          btn_login = st.form_submit_button("🔑 Ingresar al Sistema")
 
+          if btn_login:
+            codigo_correcto = lista_participantes_validos.get(nombre_ingresado)
+            if clave_ingresada.strip().upper() == codigo_correcto.upper():
+              st.session_state["participante_logueado"] = {
+                  "nombre": nombre_ingresado,
+                  "codigo": codigo_correcto,
+              }
+              st.success(
+                  f"¡Bienvenido, {nombre_ingresado} ({codigo_correcto})!"
+              )
+              st.rerun()
+            else:
+              st.error(
+                  "❌ Clave incorrecta. Recuerde que su clave es su código"
+                  " asignado (ej. COD 01)."
+              )
+      else:
+        # Participante ya logueado
+        p_info = st.session_state["participante_logueado"]
         st.info(
-            f"Participante activo: **{participante_seleccionado}** | Hoja:"
-            f" **{semana_seleccionada}** | Carreras: **{num_carreras}**"
+            f"👤 Participante Activo: **{p_info['nombre']}** (`{p_info['codigo']}`)"
+            f" | Jornada Activa: **{st.session_state['semana_activa']}** |"
+            f" Carreras Habilitadas: **{st.session_state['carreras_activas']}**"
         )
+
+        if st.button("🚪 Cerrar Sesión / Cambiar de Participante"):
+          st.session_state["participante_logueado"] = None
+          st.rerun()
 
         st.markdown("---")
         st.markdown("### 📌 Reglamento de Marcas:")
@@ -134,11 +156,15 @@ if os.path.exists(excel_file):
             "- **Fijas (F):** Una en las carreras no válidas y otra en las"
             " válidas del 5y6."
         )
+        st.markdown("---")
 
         with st.form("form_marcas"):
           marcas_por_carrera = {}
+          num_carr = st.session_state["carreras_activas"]
 
-          for i in range(1, num_carreras + 1):
+          for i in range(1, num_carr_activas := num_carr + 1):
+            if i > num_carr:
+              break
             st.markdown(f"#### 🏁 Carrera {i}")
 
             col_m1, col_m2, col_m3, col_m4 = st.columns([2, 2, 2, 2])
@@ -164,126 +190,137 @@ if os.path.exists(excel_file):
             }
             st.markdown("---")
 
-          clave_seguridad = st.text_input(
-              "Ingrese su Clave de Seguridad:", type="password"
-          )
-          boton_guardar = st.form_submit_button("Guardar y Enviar Marcas")
+          boton_guardar = st.form_submit_button("🚀 Guardar y Enviar Marcas")
 
           if boton_guardar:
-            if clave_seguridad:
-              sf_count = sum(
-                  1
-                  for c in marcas_por_carrera.values()
-                  if c["tipo"] == "Súper Fijo (SF)"
+            sf_count = sum(
+                1
+                for c in marcas_por_carrera.values()
+                if c["tipo"] == "Súper Fijo (SF)"
+            )
+
+            if sf_count > 1:
+              st.error(
+                  "⚠️ Solo puedes seleccionar un (1) Súper Fijo (SF) por reunión."
               )
-
-              if sf_count > 1:
-                st.error(
-                    "⚠️ Solo puedes seleccionar un (1) Súper Fijo (SF) por"
-                    " reunión."
-                )
-              else:
-                error_sf = False
-                for num, datos in marcas_por_carrera.items():
-                  if (
-                      datos["tipo"] == "Súper Fijo (SF)"
-                      and (
-                          datos["m2"].strip() != ""
-                          or datos["m3"].strip() != ""
-                      )
-                  ):
-                    st.error(
-                        f"⚠️ En la Carrera {num} seleccionaste Súper Fijo (SF),"
-                        " la 2da y 3ra marca deben estar vacías."
-                    )
-                    error_sf = True
-                    break
-
-                if not error_sf:
-                  try:
-                    wb = openpyxl.load_workbook(excel_file)
-
-                    if semana_seleccionada in wb.sheetnames:
-                      ws = wb[semana_seleccionada]
-                    else:
-                      ws = wb.create_sheet(title=semana_seleccionada)
-                      cabecera = ["NOMBRE PARTICIPANTE"]
-                      for c in range(1, 17):
-                        cabecera.extend([
-                            f"C{c}_1ra",
-                            f"C{c}_2da",
-                            f"C{c}_3ra",
-                            f"C{c}_Tipo",
-                        ])
-                      ws.append(cabecera)
-
-                    fila_encontrada = None
-                    for row_idx in range(4, ws.max_row + 1):
-                      val_celda = ws.cell(row=row_idx, column=3).value
-                      if (
-                          val_celda
-                          and str(val_celda).strip().upper()
-                          == nombre_limpio.strip().upper()
-                      ):
-                        fila_encontrada = row_idx
-                        break
-
-                    datos_fila = [nombre_limpio]
-                    for c in range(1, 17):
-                      if c <= num_carreras:
-                        m_data = marcas_por_carrera[c]
-                        tipo_corto = "N"
-                        if m_data["tipo"] == "Fijo (F)":
-                          tipo_corto = "F"
-                        elif m_data["tipo"] == "Súper Fijo (SF)":
-                          tipo_corto = "SF"
-
-                        datos_fila.extend([
-                            m_data["m1"],
-                            m_data["m2"],
-                            m_data["m3"],
-                        ] + [tipo_corto])
-                      else:
-                        datos_fila.extend(["", "", "", ""])
-
-                    if fila_encontrada:
-                      for col_idx, val in enumerate(datos_fila, start=1):
-                        ws.cell(
-                            row=fila_encontrada, column=col_idx, value=val
-                        )
-                    else:
-                      ws.append(datos_fila)
-
-                    wb.save(excel_file)
-                    st.success(
-                        f"¡Marcas de **{nombre_limpio}** guardadas con éxito en"
-                        f" la hoja '{semana_seleccionada}'!"
-                    )
-                  except Exception as err:
-                    st.error(f"Error al escribir en el Excel: {err}")
             else:
-              st.error("Por favor ingrese su clave de seguridad.")
-      else:
-        st.warning(
-            "No se encontraron participantes válidos en las filas a partir de"
-            " la fila 4."
-        )
+              error_sf = False
+              for num, datos in marcas_por_carrera.items():
+                if datos["tipo"] == "Súper Fijo (SF)" and (
+                    datos["m2"].strip() != "" or datos["m3"].strip() != ""
+                ):
+                  st.error(
+                      f"⚠️ En la Carrera {num} seleccionaste Súper Fijo (SF), la"
+                      " 2da y 3ra marca deben estar vacías."
+                  )
+                  error_sf = True
+                  break
+
+              if not error_sf:
+                try:
+                  wb = openpyxl.load_workbook(excel_file)
+                  semana_actual = st.session_state["semana_activa"]
+
+                  if semana_actual in wb.sheetnames:
+                    ws = wb[semana_actual]
+                  else:
+                    ws = wb.create_sheet(title=semana_actual)
+                    cabecera = ["NOMBRE PARTICIPANTE"]
+                    for c in range(1, 17):
+                      cabecera.extend([
+                          f"C{c}_1ra",
+                          f"C{c}_2da",
+                          f"C{c}_3ra",
+                          f"C{c}_Tipo",
+                      ])
+                    ws.append(cabecera)
+
+                  fila_encontrada = None
+                  for row_idx in range(4, ws.max_row + 1):
+                    val_celda = ws.cell(row=row_idx, column=3).value
+                    if (
+                        val_celda
+                        and str(val_celda).strip().upper()
+                        == p_info["nombre"].strip().upper()
+                    ):
+                      fila_encontrada = row_idx
+                      break
+
+                  datos_fila = [p_info["nombre"]]
+                  for c in range(1, 17):
+                    if c <= num_carr:
+                      m_data = marcas_por_carrera[c]
+                      tipo_corto = "N"
+                      if m_data["tipo"] == "Fijo (F)":
+                        tipo_corto = "F"
+                      elif m_data["tipo"] == "Súper Fijo (SF)":
+                        tipo_corto = "SF"
+
+                      datos_fila.extend([
+                          m_data["m1"],
+                          m_data["m2"],
+                          m_data["m3"],
+                          tipo_corto,
+                      ])
+                    else:
+                      datos_fila.extend(["", "", "", ""])
+
+                  if fila_encontrada:
+                    for col_idx, val in enumerate(datos_fila, start=1):
+                      ws.cell(row=fila_encontrada, column=col_idx, value=val)
+                  else:
+                    ws.append(datos_fila)
+
+                  wb.save(excel_file)
+                  st.success(
+                      f"¡Tus marcas han sido guardadas con éxito en la hoja"
+                      f" '{semana_actual}'!"
+                  )
+                except Exception as err:
+                  st.error(f"Error al escribir en el Excel: {err}")
 
     elif modo == "Panel de Director":
       st.subheader("🛠️ Panel Privado del Director (Nelson Osorio)")
       st.markdown(
-          "Aquí puedes descargar el archivo Excel actualizado con todas las"
-          " marcas que los participantes han enviado desde la nube."
+          "Configura la jornada activa y descarga el archivo actualizado con"
+          " las marcas recibidas."
       )
 
       clave_director = st.text_input(
           "Contraseña de Administrador:", type="password"
       )
       if clave_director == "ganadores2026":
-        st.success(
-            "✅ Acceso concedido. Puedes descargar tu archivo actualizado:"
+        st.success("✅ Acceso de Director Autorizado.")
+        st.markdown("---")
+        st.markdown("#### ⚙️ Configuración Global de la Jornada")
+
+        # Configurar semana activa
+        nueva_semana = st.selectbox(
+            "Seleccione la Semana Activa para los participantes:",
+            ["SEM 1", "SEM 2", "SEM 3", "SEM 4", "SEM 5", "SEM 6"],
+            index=["SEM 1", "SEM 2", "SEM 3", "SEM 4", "SEM 5", "SEM 6"].index(
+                st.session_state["semana_activa"]
+            ),
         )
 
+        # Configurar cantidad de carreras
+        nuevas_carreras = st.slider(
+            "Cantidad de carreras programadas para esta semana:",
+            min_value=6,
+            max_value=16,
+            value=st.session_state["carreras_activas"],
+        )
+
+        if st.button("💾 Guardar Configuración de la Jornada"):
+          st.session_state["semana_activa"] = nueva_semana
+          st.session_state["carreras_activas"] = nuevas_carreras
+          st.success(
+              f"¡Configuración actualizada! Semana activa: **{nueva_semana}** |"
+              f" Carreras: **{nuevas_carreras}**"
+          )
+
+        st.markdown("---")
+        st.markdown("#### 📥 Descarga de Base de Datos")
         with open(excel_file, "rb") as f:
           st.download_button(
               label="📥 Descargar Excel Actualizado con Marcas",
