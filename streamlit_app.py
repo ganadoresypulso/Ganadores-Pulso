@@ -269,7 +269,12 @@ if os.path.exists(excel_file):
             " la fila 4."
         )
 
-    elif modo == "Panel de Director":
+    modo = st.sidebar.radio(  # noqa: F811
+        "Seleccione una opción:",
+        ["Ver Tabla General", "Cargar Mis Marcas", "Panel de Director"],
+    )
+
+    if modo == "Panel de Director":
       st.subheader("🛠️ Panel Privado del Director (Nelson Osorio)")
       st.markdown(
           "Aquí puedes descargar el archivo Excel actualizado con todas las"
@@ -279,7 +284,7 @@ if os.path.exists(excel_file):
       clave_director = st.text_input(
           "Contraseña de Administrador:", type="password"
       )
-      if clave_director == "ganadores2026":  # Contraseña protegida para ti
+      if clave_director == "ganadores2026":
         st.success(
             "✅ Acceso concedido. Puedes descargar tu archivo actualizado:"
         )
@@ -299,4 +304,4 @@ if os.path.exists(excel_file):
   except Exception as e:
     st.error(f"Error al procesar el archivo de Excel: {e}")
 else:
-  st.error("No se encuentra el archivo de Excel en la carpeta.")ta.")
+  st.error("No se encuentra el archivo de Excel en la carpeta.")encuentra el archivo de Excel en la carpeta.")ta.")
