@@ -8,8 +8,28 @@ st.set_page_config(
     page_title="Campeonato de Marcas - Ganadores & Pulso", layout="wide"
 )
 
-st.title("🏇 Campeonato de Marcas - Ganadores & Pulso")
-st.markdown("### Portal Oficial de Participantes")
+# --- ENCABEZADO CON LOGOTIPO ---
+col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
+with col_logo2:
+  # Asegúrate de subir tu imagen cuadrada con este nombre exacto a tu repositorio de GitHub
+  if os.path.exists("logo.jpg"):
+    st.image("logo.jpg", use_container_width=True)
+  elif os.path.exists("Logo.jpg"):
+    st.image("Logo.jpg", use_container_width=True)
+  else:
+    st.title("🏇 Campeonato de Marcas - Ganadores & Pulso")
+
+st.markdown(
+    "<h3 style='text-align: center; color: #4A90E2;'>Proyectando el"
+    " Hipismo</h3>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    "<p style='text-align: center; font-style: italic; color: #888;'>Director:"
+    " Nelson Osorio</p>",
+    unsafe_allow_html=True,
+)
+st.markdown("---")
 
 excel_file = "CONTROL CAMPEONATO DE MARCAS.xlsx"
 
@@ -105,7 +125,6 @@ if os.path.exists(excel_file):
         filas_ranking = []
         for r in range(2, 152):
           fila_vals = [ws_rank.cell(row=r, column=c).value for c in range(2, 18)]
-          # Si toda la fila está vacía, la omitimos
           if all(v is None or str(v).strip() == "" for v in fila_vals):
             continue
           filas_ranking.append(
@@ -113,19 +132,10 @@ if os.path.exists(excel_file):
           )
 
         if filas_ranking:
-          # Asignar nombres limpios y únicos a las columnas para evitar errores de duplicados
-          num_columnas = len(filas_ranking[0])
-          nombres_cols = [
-              f"Col_{i+1}" for i in range(num_columnas)
-          ]  # Por defecto genéricas y limpias
-
-          # Si la primera fila parece una cabecera con nombres descriptivos, la usamos con sufijos únicos
           raw_headers = [
               str(h).strip() if h is not None and str(h).strip() != "" else f"Col_{i+1}"
               for i, h in enumerate(filas_ranking[0])
           ]
-
-          # Asegurar que no haya nombres duplicados en las cabeceras
           seen = {}
           unique_headers = []
           for h in raw_headers:
@@ -147,8 +157,6 @@ if os.path.exists(excel_file):
       else:
         st.warning(
             f"⚠️ No se encontró la hoja '{hoja_ranking}' en el archivo de Excel."
-            " Asegúrate de que exista en el archivo para visualizar el"
-            " ranking."
         )
 
     elif modo == "Acceso de Participantes":
@@ -268,7 +276,7 @@ if os.path.exists(excel_file):
                 ):
                   st.error(
                       f"⚠️ En la Carrera {num} seleccionaste Súper Fijo (SF), la"
-                      " 2da y 3ra marca deben estar vacías."
+                      " 2da y 3ra marca deben ir vacías."
                   )
                   error_val = True
                   break
