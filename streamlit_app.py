@@ -79,20 +79,56 @@ if os.path.exists(excel_file):
 
     df_final = pd.DataFrame(datos_filas, columns=headers_limpios)
 
-    # Menú Lateral
+    # Menú Lateral Actualizado
     st.sidebar.header("🔐 Menú de Navegación")
     modo = st.sidebar.radio(
         "Seleccione una opción:",
         [
             "Acceso de Participantes",
-            "Ver Tabla General",
+            "Listado de Participantes",
+            "Ranking General",
             "Panel de Director",
         ],
     )
 
-    if modo == "Ver Tabla General":
+    if modo == "Listado de Participantes":
       st.subheader("📋 Listado Oficial de Participantes")
       st.dataframe(df_final, use_container_width=True, hide_index=True)
+
+    elif modo == "Ranking General":
+      st.subheader("🏆 Ranking General del Campeonato")
+      hoja_ranking = "20-9-26"
+
+      if hoja_ranking in wb_lee.sheetnames:
+        ws_rank = wb_lee[hoja_ranking]
+        # Extraer desde celda B2 hasta Q151 (Columna B es 2, Columna Q es 17)
+        filas_ranking = []
+        for r in range(2, 152):
+          fila_vals = [ws_rank.cell(row=r, column=c).value for c in range(2, 18)]
+          # Si toda la fila está vacía, la omitimos
+          if all(v is None or str(v).strip() == "" for v in fila_vals):
+            continue
+          filas_ranking.append(
+              ["" if v is None else v for v in fila_vals]
+          )
+
+        if filas_ranking:
+          # Usar la primera fila extraída como cabecera o asignar nombres limpios de columnas (B a Q)
+          headers_rank = filas_ranking[0]
+          datos_rank = filas_ranking[1:]
+          df_rank = pd.DataFrame(datos_rank, columns=headers_rank)
+          st.dataframe(df_rank, use_container_width=True, hide_index=True)
+        else:
+          st.warning(
+              f"La hoja '{hoja_ranking}' no contiene datos en el rango"
+              " especificado."
+          )
+      else:
+        st.warning(
+            f"⚠️ No se encontró la hoja '{hoja_ranking}' en el archivo de Excel."
+            " Asegúrate de que exista en el archivo para visualizar el"
+            " ranking."
+        )
 
     elif modo == "Acceso de Participantes":
       st.subheader("✍️ Módulo de Ingreso de Marcas")
@@ -192,7 +228,6 @@ if os.path.exists(excel_file):
           boton_guardar = st.form_submit_button("🚀 Guardar y Enviar Marcas")
 
           if boton_guardar:
-            # 1. Validar Súper Fijo (Máximo 1 y sin 2da/3ra marca)
             sf_count = sum(
                 1
                 for c in marcas_por_carrera.values()
@@ -217,7 +252,6 @@ if os.path.exists(excel_file):
                   error_val = True
                   break
 
-            # 2. Validar Fijas (1 en no válidas y 1 en válidas del 5y6)
             if not error_val:
               fijas_no_val = sum(
                   1
@@ -245,7 +279,6 @@ if os.path.exists(excel_file):
                 )
                 error_val = True
 
-            # 3. Si todo está correcto, guardar en Excel
             if not error_val:
               try:
                 wb = openpyxl.load_workbook(excel_file)
